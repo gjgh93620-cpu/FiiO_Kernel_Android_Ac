@@ -1,4 +1,4 @@
-name: Build RK3188 Kernel with Framebuffer Console (GCC 4.8)
+name: Build RK3188 Kernel with Modified Defconfig
 
 on:
   workflow_dispatch:
@@ -25,13 +25,8 @@ jobs:
       - name: Configure kernel
         working-directory: ./kernel
         run: |
-          # 使用设备 defconfig
           make rk3188_X5_defconfig
-          # 启用 Framebuffer Console
-          echo "CONFIG_FRAMEBUFFER_CONSOLE=y" >> .config
-          echo "CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y" >> .config
-          echo "CONFIG_LOGO=y" >> .config
-          # 保持 Mali 驱动开启（不手动禁用）
+          # 自动处理配置依赖
           yes "" | make oldconfig
 
       - name: Build kernel
