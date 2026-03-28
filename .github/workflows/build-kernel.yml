@@ -1,1 +1,57 @@
+name: Build RK3188 Kernel with Framebuffer Console
 
+# 触发条件：手动触发（也可以通过 push 等触发，这里按手动最灵活）
+on:
+  workflow_dispatch:
+
+jobs:
+  build-kernel:
+    runs-on: ubuntu-22.04
+    steps:
+      # 1. 检出您的内核源码（当前仓库）
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
+        with:
+          path: kernel  # 将代码检出到 kernel 目录
+
+      # 2. 安装交叉编译工具链（使用 GCC 9 以兼容老内核）
+      - name: Install cross compiler (GCC 9)
+        run: |
+          sudo apt update
+          sudo apt install -y gcc-arm-linux-gnueabi gcc-9-arm-linux-gnueabi
+          # 将 GCC 9 设为默认
+          sudo update-alternatives --install /usr/bin/arm-linux-gnueabi-gcc \
+            arm-linux-gnueabi-gcc /usr/bin/arm-linux-gnueabi-gcc-9 100
+          sudo update-alternatives --set arm-linux-gnueabi-gcc /usr/bin/arm-linux-gnueabi-gcc-9
+
+      # 3. 配置内核（使用您的 defconfig 并启用 framebuffer console）
+      - name: Configure kernel
+        working-directory: ./kernel
+        run: |
+          export ARCH=arm
+          export CROSS_COMPILE=arm-linux-gnueabi-
+          # 使用设备自带的 defconfig
+          make rk3188_X5_defconfig
+          # 启用 Framebuffer Console
+          echo "CONFIG_FRAMEBUFFER_CONSOLE=y" >> .config
+          echo "CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y" >> .config
+          # 确保 Logo 支持（可选，但有助于屏幕初始化）
+          echo "CONFIG_LOGO=y" >> .config
+          # 更新依赖配置（自动处理新增选项的依赖关系）
+          make olddefconfig
+
+      # 4. 编译内核
+      - name: Build kernel
+        working-directory: ./kernel
+        run: |
+          export ARCH=arm
+          export CROSS_COMPILE=arm-linux-gnueabi-
+          # 使用所有可用 CPU 核心加速编译
+          make -j$(nproc)
+
+      # 5. 上传编译产物（zImage）
+      - name: Upload kernel image
+        uses: actions/upload-artifact@v4
+        with:
+          name: zImage
+          path: kernel/arch/arm/boot/zImage
