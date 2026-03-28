@@ -12,19 +12,19 @@ jobs:
         with:
           path: kernel
 
-      - name: Install cross compiler (GCC 9)
+      - name: Setup Android NDK toolchain (GCC 4.9)
         run: |
-          sudo apt update
-          sudo apt install -y gcc-arm-linux-gnueabi gcc-9-arm-linux-gnueabi
-          sudo update-alternatives --install /usr/bin/arm-linux-gnueabi-gcc \
-            arm-linux-gnueabi-gcc /usr/bin/arm-linux-gnueabi-gcc-9 100
-          sudo update-alternatives --set arm-linux-gnueabi-gcc /usr/bin/arm-linux-gnueabi-gcc-9
+          wget https://dl.google.com/android/repository/android-ndk-r17c-linux-x86_64.zip
+          unzip -q android-ndk-r17c-linux-x86_64.zip
+          android-ndk-r17c/build/tools/make_standalone_toolchain.py \
+            --arch arm --api 21 --install-dir /opt/arm-gcc-4.9
+          echo "PATH=/opt/arm-gcc-4.9/bin:$PATH" >> $GITHUB_ENV
+          echo "CROSS_COMPILE=arm-linux-androideabi-" >> $GITHUB_ENV
+          echo "ARCH=arm" >> $GITHUB_ENV
 
       - name: Configure kernel
         working-directory: ./kernel
         run: |
-          export ARCH=arm
-          export CROSS_COMPILE=arm-linux-gnueabi-
           make rk3188_X5_defconfig
           echo "CONFIG_FRAMEBUFFER_CONSOLE=y" >> .config
           echo "CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y" >> .config
@@ -34,8 +34,6 @@ jobs:
       - name: Build kernel
         working-directory: ./kernel
         run: |
-          export ARCH=arm
-          export CROSS_COMPILE=arm-linux-gnueabi-
           make -j$(nproc)
 
       - name: Upload kernel image
