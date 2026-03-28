@@ -1,4 +1,4 @@
-name: Build RK3188 Kernel with Framebuffer Console
+name: Build RK3188 Kernel with Framebuffer Console (GCC 4.8)
 
 on:
   workflow_dispatch:
@@ -12,23 +12,26 @@ jobs:
         with:
           path: kernel
 
-      - name: Setup Android NDK toolchain (GCC 4.9)
+      - name: Setup Android NDK r13b (GCC 4.8)
         run: |
-          wget https://dl.google.com/android/repository/android-ndk-r17c-linux-x86_64.zip
-          unzip -q android-ndk-r17c-linux-x86_64.zip
-          android-ndk-r17c/build/tools/make_standalone_toolchain.py \
-            --arch arm --api 21 --install-dir /opt/arm-gcc-4.9
-          echo "PATH=/opt/arm-gcc-4.9/bin:$PATH" >> $GITHUB_ENV
+          wget https://dl.google.com/android/repository/android-ndk-r13b-linux-x86_64.zip
+          unzip -q android-ndk-r13b-linux-x86_64.zip
+          android-ndk-r13b/build/tools/make_standalone_toolchain.py \
+            --arch arm --api 21 --install-dir /opt/arm-gcc-4.8
+          echo "PATH=/opt/arm-gcc-4.8/bin:$PATH" >> $GITHUB_ENV
           echo "CROSS_COMPILE=arm-linux-androideabi-" >> $GITHUB_ENV
           echo "ARCH=arm" >> $GITHUB_ENV
 
       - name: Configure kernel
         working-directory: ./kernel
         run: |
+          # 使用设备 defconfig
           make rk3188_X5_defconfig
+          # 启用 Framebuffer Console
           echo "CONFIG_FRAMEBUFFER_CONSOLE=y" >> .config
           echo "CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y" >> .config
           echo "CONFIG_LOGO=y" >> .config
+          # 保持 Mali 驱动开启（不手动禁用）
           yes "" | make oldconfig
 
       - name: Build kernel
