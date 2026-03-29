@@ -76,7 +76,7 @@ static struct mali_mem_os_allocator {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	.timed_shrinker = __DELAYED_WORK_INITIALIZER(mali_mem_os_allocator.timed_shrinker, mali_mem_os_trim_pool, TIMER_DEFERRABLE),
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
-	.timed_shrinker = __DEFERRED_WORK_INITIALIZER(mali_mem_os_allocator.timed_shrinker, mali_mem_os_trim_pool),
+	.timed_shrinker = __DELAYED_WORK_INITIALIZER(mali_mem_os_allocator.timed_shrinker, mali_mem_os_trim_pool),
 #else
 	.timed_shrinker = __DELAYED_WORK_INITIALIZER(mali_mem_os_allocator.timed_shrinker, mali_mem_os_trim_pool),
 #endif
