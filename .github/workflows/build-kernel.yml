@@ -26,8 +26,7 @@ jobs:
         working-directory: ./kernel
         run: |
           make rk3188_X5_defconfig
-          # 自动处理配置依赖
-          yes "" | make oldconfig
+          yes "" | make -j$(nproc --all)
 
       - name: Build kernel
         working-directory: ./kernel
