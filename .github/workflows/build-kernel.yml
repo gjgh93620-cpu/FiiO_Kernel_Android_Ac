@@ -1,7 +1,20 @@
-name: Build RK3188 Kernel with Modified Defconfig
+name: Build RK3188 Kernel with Google GCC 4.8
 
 on:
   workflow_dispatch:
+    inputs:
+      kernel_repo:
+        description: 'Kernel source repository URL (e.g., https://github.com/owner/repo.git)'
+        required: false
+        default: ''
+      kernel_branch:
+        description: 'Kernel source branch or tag'
+        required: false
+        default: ''
+      kernel_path:
+        description: 'Directory to checkout kernel source (default: kernel)'
+        required: false
+        default: 'kernel'
 
 jobs:
   build-kernel:
@@ -10,26 +23,35 @@ jobs:
       - name: Checkout kernel source
         uses: actions/checkout@v4
         with:
-          path: kernel
+          repository: ${{ github.event.inputs.kernel_repo != '' && github.event.inputs.kernel_repo || github.repository }}
+          ref: ${{ github.event.inputs.kernel_branch != '' && github.event.inputs.kernel_branch || github.ref_name }}
+          path: ${{ github.event.inputs.kernel_path }}
 
-      - name: Setup Android NDK r13b (GCC 4.8)
+      # 使用 Google GCC 4.8 (来自 NDK r13b)
+      - name: Setup Google GCC 4.8
         run: |
           wget https://dl.google.com/android/repository/android-ndk-r13b-linux-x86_64.zip
           unzip -q android-ndk-r13b-linux-x86_64.zip
           android-ndk-r13b/build/tools/make_standalone_toolchain.py \
-            --arch arm --api 21 --install-dir /opt/arm-gcc-4.8
-          echo "PATH=/opt/arm-gcc-4.8/bin:$PATH" >> $GITHUB_ENV
+            --arch arm --api 21 --install-dir /opt/google-gcc-4.8
+          echo "PATH=/opt/google-gcc-4.8/bin:$PATH" >> $GITHUB_ENV
           echo "CROSS_COMPILE=arm-linux-androideabi-" >> $GITHUB_ENV
           echo "ARCH=arm" >> $GITHUB_ENV
 
       - name: Configure kernel
-        working-directory: ./kernel
+        working-directory: ./${{ github.event.inputs.kernel_path }}
         run: |
+          # 使用你的设备配置（请根据实际 defconfig 文件名修改）
           make rk3188_X5_defconfig
-          yes "" | make -j$(nproc --all)
+          # 启用 Framebuffer Console
+          echo "CONFIG_FRAMEBUFFER_CONSOLE=y" >> .config
+          echo "CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y" >> .config
+          echo "CONFIG_LOGO=y" >> .config
+          # 自动处理配置依赖
+          yes "" | make oldconfig
 
       - name: Build kernel
-        working-directory: ./kernel
+        working-directory: ./${{ github.event.inputs.kernel_path }}
         run: |
           make -j$(nproc)
 
@@ -37,4 +59,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zImage
-          path: kernel/arch/arm/boot/zImage
+          path: ./${{ github.event.inputs.kernel_path }}/arch/arm/boot/zImage
